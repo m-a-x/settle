@@ -18,18 +18,17 @@ def forecast_master(current,weekday_prior, n_predictions):
     (lowest layer)
     '''
     to_predict = np.array(current).T
-    next_to_predict = list(to_predict[0]) # init next array of predictions
-    for i in range(0, n_predictions): # for each prediction in the future
-        filtered_X = []
-        next_X = []
-        for old_date in weekday_prior.columns: # for each day from this sem. that is the same wkday as today
-            filtered_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])]) # get the same chunk of data that is currently avail. for today (~X)
-            next_X.append(weekday_prior[old_date].iloc[len(to_predict[0])]) # get the historical datapoint after that, the one we're tryna guess (~y) 
+    next_to_predict = list(to_predict[0]) # initialize next list of predictions
+    for i in range(0, n_predictions): # for each desired future prediction
+        historical_X = []
+        historical_Y = []
+        for old_date in weekday_prior.columns: # for each day from this semester with the same weekday as today
+            historical_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])]) # get the same timespan of data that is currently avail. for today from prior (~X) (dim: # datapts available)
+            historical_Y.append(weekday_prior[old_date].iloc[len(to_predict[0])]) # get the historical datapoint after that, the one we're tryna guess (~y)  (dim: 1)
         clf = SVR(kernel = 'linear', C=.0008) # set up Support Vector Regression
-        clf.fit(filtered_X, next_X) # do the hard brain work of fitting the model
-        next_to_predict.append(clf.predict(to_predict)[0]) # predict the next point ##################### ??????????????????????????????
-        next_X.append(weekday_prior[old_date][-1]) #????????????????????????
-        to_predict = np.array([next_to_predict])
+        clf.fit(historical_X, historical_Y) # do the hard mental brain work of fitting the model
+        next_to_predict.append(clf.predict(to_predict)[0]) # predict the next point 
+        to_predict = np.array([next_to_predict]) # add the predicted point to the current data list as if it were a true measure
     return pd.Series(to_predict[-1], index=weekday_prior.index[:len(to_predict[-1])])
 
   

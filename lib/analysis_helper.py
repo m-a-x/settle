@@ -38,7 +38,7 @@ def scrape_location_data(location_name, yr_1, m_1, d_1, h_1, min_1, yr_f, m_f, d
         sem = 'fall'
     else:
         sem = 'spr'
-    api_key = pd.read_pickle('../data/api_key.pkl').iloc[0][0]
+    api_key = pd.read_pickle('../data/key.pkl').iloc[0][0]
     url = "http://density.adicu.com/window/" + t_1 + "/" + t_f + "/group/" + building_to_location_id_dic[location_name] + "?auth_token=" + api_key
     page = req.get(url) # get first page content
     content = json.loads(page.content)
@@ -101,47 +101,47 @@ def trim_df_by_open_hrs(placename, df, weekday=None):
         weekday = dayofweek_int_to_str(current_time.weekday())
     just_time = current_time.time()
     if placename == "jjs":
-        start = datetime.time(11,45)
+        start = datetime.time(12,00)
         check_if_building_open(placename, just_time, sta=start)
         mask = (df.index >= start)
         df = df.loc[mask]
     elif placename == "john_jay":
-        start = datetime.time(10,45)
-        stop = datetime.time(21,15)
+        start = datetime.time(11,00)
+        stop = datetime.time(21,00)
         if (weekday == 'Fri') or (weekday == 'Sat'):
-            sys.exit(' sorry john jay is closed today')
+            print ' sorry john jay is closed today'
         if weekday== 'Sun':
-            start = datetime.time(9,45)
+            start = datetime.time(10,00)
         check_if_building_open(placename, just_time, sta=start, stp = stop)
         mask = (df.index >= start) & (df.index <= stop)
         df = df.loc[mask]
     elif placename == "Uris":
-        start = datetime.time(7,45)
+        start = datetime.time(8,00)
         stop = datetime.time(23,45)
         if (weekday == 'Sat'):
-            start = datetime.time(9,45)
-            stop = datetime.time(21,15)
+            start = datetime.time(10,00)
+            stop = datetime.time(21,00)
         if (weekday == 'Sun'):
-            start = datetime.time(9,45)
-            stop = datetime.time(23,15)
+            start = datetime.time(10,00)
+            stop = datetime.time(23,00)
         if (weekday == 'Thu'):
-            start = datetime.time(9,45)
-            stop = datetime.time(23,15)
+            start = datetime.time(10,00)
+            stop = datetime.time(23,00)
         if (weekday == 'Fri'):
-            start = datetime.time(7,45)
-            stop = datetime.time(21,15)
+            start = datetime.time(8,00)
+            stop = datetime.time(21,00)
         check_if_building_open(placename, just_time, sta=start, stp = stop)
         mask = (df.index >= start) & (df.index <= stop)
         df = df.loc[mask]
     elif placename == "Science_and_Engineering_Library":
-        start = datetime.time(8,45)
+        start = datetime.time(9,00)
         if (weekday == 'Sat') or (weekday == 'Sun'):
-            start = datetime.time(10,45)
+            start = datetime.time(11,00)
         check_if_building_open(placename, just_time, sta=start)
         mask = (df.index >= start)
         df = df.loc[mask]
     else:
-        start = datetime.time(6,45)
+        start = datetime.time(7,30)
         mask = (df.index >= start)
         df = df.loc[mask]
     return df
