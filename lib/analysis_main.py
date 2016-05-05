@@ -13,23 +13,31 @@ import easygui as eGUI
 
 
 def forecast_master(current,weekday_prior, n_predictions):
+    '''
+    Runs an individual forecast for a set of current and prior data
+    (lowest layer)
+    '''
     to_predict = np.array(current).T
-    new_to_predict = list(to_predict[0])
-    for i in range(0, n_predictions):
+    next_to_predict = list(to_predict[0]) # init next array of predictions
+    for i in range(0, n_predictions): # for each prediction in the future
         filtered_X = []
         next_X = []
-        for old_date in weekday_prior.columns:
-            filtered_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])])
-            next_X.append(weekday_prior[old_date].iloc[len(to_predict[0])])
-        clf = SVR(kernel = 'linear', C=.0008)
-        clf.fit(filtered_X, next_X)
-        new_to_predict.append(clf.predict(to_predict)[0])
-        next_X.append(weekday_prior[old_date][-1])
-        to_predict = np.array([new_to_predict])
+        for old_date in weekday_prior.columns: # for each day from this sem. that is the same wkday as today
+            filtered_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])]) # get the same chunk of data that is currently avail. for today (~X)
+            next_X.append(weekday_prior[old_date].iloc[len(to_predict[0])]) # get the historical datapoint after that, the one we're tryna guess (~y) 
+        clf = SVR(kernel = 'linear', C=.0008) # set up Support Vector Regression
+        clf.fit(filtered_X, next_X) # do the hard brain work of fitting the model
+        next_to_predict.append(clf.predict(to_predict)[0]) # predict the next point ##################### ??????????????????????????????
+        next_X.append(weekday_prior[old_date][-1]) #????????????????????????
+        to_predict = np.array([next_to_predict])
     return pd.Series(to_predict[-1], index=weekday_prior.index[:len(to_predict[-1])])
 
   
 def pred(n_predictions, n_earlier_predictions, place, color, data_path, lamb):
+    '''
+    runs all of the users choices of most recent and past predictions
+    (middle layer)
+    '''
     current, weekday_prior = helper.load_all_data(place, 'spr_2016', n_predictions, data_path, lamb)
     curf = helper.hodrick_prescott_filter(current, lamb) #######################
     cur_to_plot = current
@@ -53,6 +61,7 @@ def pred(n_predictions, n_earlier_predictions, place, color, data_path, lamb):
 def run_application():
     '''
     main application that runs all user interaction/scraping/prediction functions
+    (highest layer)
     '''
     data_path = eGUI.diropenbox(msg='Where do you want to load/save data')
     data_path = data_path +"/"

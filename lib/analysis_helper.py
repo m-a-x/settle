@@ -38,7 +38,8 @@ def scrape_location_data(location_name, yr_1, m_1, d_1, h_1, min_1, yr_f, m_f, d
         sem = 'fall'
     else:
         sem = 'spr'
-    url = "http://density.adicu.com/window/" + t_1 + "/" + t_f + "/group/" + building_to_location_id_dic[location_name] + "?auth_token=HMOPZA257UIFUJKIDTAKAV0F1D6CG23A"
+    api_key = pd.read_pickle('../data/api_key.pkl').iloc[0][0]
+    url = "http://density.adicu.com/window/" + t_1 + "/" + t_f + "/group/" + building_to_location_id_dic[location_name] + "?auth_token=" + api_key
     page = req.get(url) # get first page content
     content = json.loads(page.content)
     try:
@@ -92,6 +93,9 @@ def check_if_building_open(placename, current_time, sta=None, stp = None):
 
 
 def trim_df_by_open_hrs(placename, df, weekday=None):
+    '''
+    trims a dataframe by whether or not the place is open on the weekday
+    '''
     current_time = datetime.datetime.now()
     if weekday is None:
         weekday = dayofweek_int_to_str(current_time.weekday())
@@ -157,6 +161,10 @@ def trim_df_by_daily_count(df, count_threshold):
 
 
 def trim_big_dic_by_open_hrs(placename, weekday_series_dic):
+    '''
+    trims a dic of weekday: df by the place's open hours - calls the above 
+    function a bunch
+    '''
     min_count_thresholds = {'jjs': 900, 'john_jay': 1800, 'Uris': 1700, 'Science_and_Engineering_Library': 1300 }
     try:
         min_count_per_day = min_count_thresholds[placename]
@@ -169,15 +177,18 @@ def trim_big_dic_by_open_hrs(placename, weekday_series_dic):
     return trimmed_dic
 
     
-def count_series_by_weekday_dic(placename, semester, data_path, df = None):
+def load_raw_weekday_dic(placename, semester, data_path, df = None):
+    '''
+    loads fresh scrape data (untrimmed and whatnot)
+    '''
     if df is None:
         try:
             df = pd.read_csv(data_path + placename + '_' + semester + '.csv', index_col='t')
         except:
-            print 'hah' ############
+            print 'cannot find file for some reason'
     df.index = pd.to_datetime(df.index)
     weekday_dic = df_to_weekday_dic(df)
-    weekday_series_dic = {}
+    raw_weekday_dic = {}
     for weekday, weekday_df in weekday_dic.items():
         date_series_dic = {}
         grouped_date = weekday_df.groupby(weekday_df.index.date)
@@ -187,11 +198,14 @@ def count_series_by_weekday_dic(placename, semester, data_path, df = None):
             date_series_dic[date] = date_series
         date_series_df = pd.DataFrame(date_series_dic)
         date_series_df.index = date_series_df.index.rename('t')
-        weekday_series_dic[weekday] = date_series_df
-    return weekday_series_dic
+        raw_weekday_dic[weekday] = date_series_df
+    return raw_weekday_dic
 
 
 def read_filtered_csv(placename, semester, data_path, lamb):
+    '''
+    reads a csv of the filtered data for the place
+    '''
     try:
         filtered = pd.read_csv(data_path + 'filtered_' + placename + '_' + semester + '.csv', index_col = 't')
         print 'file already found, not writing filtered for ' + placename + ' ' + semester
@@ -203,7 +217,7 @@ def read_filtered_csv(placename, semester, data_path, lamb):
         except:
             scrape_location_data(placename, 2016,1,18,0,0,2016,4,30,11,45,output_path=data_path)
             semester_data = pd.read_csv(data_path + placename + '_' + semester + '.csv', index_col = 't')
-        semester_data_dic = count_series_by_weekday_dic(placename, semester, data_path, df=semester_data)
+        semester_data_dic = load_raw_weekday_dic(placename, semester, data_path, df=semester_data)
         semester_data_dic = trim_big_dic_by_open_hrs(placename, semester_data_dic)
         filtered = write_filtered(placename, semester, data_path, lamb, weekday_series_dic=semester_data_dic)
         print 'no preexisting file found, wrote filtered for ' + placename + ' ' + semester
@@ -224,8 +238,11 @@ def read_filtered_csv(placename, semester, data_path, lamb):
 
 
 def write_filtered(placename, semester, data_path, lamb, weekday_series_dic=None):
+    '''
+    writes a csv of the filtered data for the place
+    '''
     if weekday_series_dic is None:
-        weekday_series_dic = count_series_by_weekday_dic(placename, semester, data_path)
+        weekday_series_dic = load_raw_weekday_dic(placename, semester, data_path)
         weekday_series_dic = trim_big_dic_by_open_hrs(placename, weekday_series_dic)
     filtered_series_dic = hp_filter_weekday_dic(weekday_series_dic, lamb)
     df = pd.concat(filtered_series_dic.values(), axis = 1)
@@ -260,6 +277,9 @@ def hp_filter_weekday_dic(weekday_dic, lamb):
 
 
 def get_current_data(placename):
+    '''
+    gets the (relevant) current data for today for the user's desired place
+    '''
     current_time = datetime.datetime.now()
     (year, month, day, hour, mins) = (current_time.year, current_time.month, current_time.day, current_time.hour, current_time.minute)
     location_data = scrape_location_data(placename, year, month, day, 00, 00, year, month, day, hour, mins - mins%15 + 1)
@@ -270,6 +290,9 @@ def get_current_data(placename):
 
 
 def load_all_data(placename, semester, n_predictions, data_path, lamb, current_data=None):
+    '''
+    loads all relevant data for analysis_main
+    '''
     weekday = dayofweek_int_to_str(datetime.datetime.now().weekday())
     if current_data is None:
         print 'starting scraping'
