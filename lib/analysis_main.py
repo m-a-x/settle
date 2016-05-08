@@ -89,10 +89,10 @@ def run_application():
         i = 0
         colors = ['red', 'orange', 'green', 'purple', 'pink']
         for lib in [ "Butler_Library_2", "Butler_Library_3", "Butler_Library_4", "Butler_Library_5", "Butler_Library_6"]:
-            pred(n_predictions, n_earlier_predictions, lib, colors[i], data_path, .5)
+            pred(n_predictions, n_earlier_predictions, lib, colors[i], data_path, .0075)
             i += 1
     else:
-        pred(n_predictions, n_earlier_predictions, place, 'purple', data_path, .5)
+        pred(n_predictions, n_earlier_predictions, place, 'purple', data_path, .0075)
     plt.title( 'Current and Predicted Occupancy for ' + place + ' Today')
     plt.ylabel('users connected')
     plt.xlabel('time')
