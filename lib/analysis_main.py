@@ -99,4 +99,5 @@ def run_application():
     plt.show()
 
 
-run_application()
+if __name__=='__main__':
+    run_application()
