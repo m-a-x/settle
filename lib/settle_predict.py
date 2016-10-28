@@ -1,9 +1,9 @@
-''' TODO:
+""" TODO:
 - MARK WHEN CURVE DEPARTS FROM REST OF GROUP -> THAT PERIODICITY OF LACK OF RELEVANCE -> TRAIN ONLY FROM RELEVANT DATA
 - put labels on graphs ffs
 - include avery and whatever
 - only use reading week training data during reading week
- '''
+ """
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,31 +13,36 @@ import easygui as eGUI
 
 
 def forecast_master(current, weekday_prior, n_predictions):
-    '''
+    """
     Runs an individual forecast for a set of current and prior data
     (lowest layer)
-    '''
+    """
     to_predict = np.array(current).T
-    next_to_predict = list(to_predict[0]) # initialize next list of predictions
-    for i in range(0, n_predictions): # for each desired future prediction
+    next_to_predict = list(to_predict[0])  # initialize next list of predictions
+    for i in range(0, n_predictions):  # for each desired future prediction
         historical_X = []
         historical_Y = []
-        for old_date in weekday_prior.columns: # for each day from this semester with the same weekday as today
-            historical_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])]) # get the same timespan of data that is currently avail. for today from prior (~X) (dim: # datapts available)
-            historical_Y.append(weekday_prior[old_date].iloc[len(to_predict[0])]) # get the historical datapoint after that, the one we're tryna guess (~y)  (dim: 1)
-        clf = SVR(kernel = 'linear', C=.0008) # set up Support Vector Regression
-        clf.fit(historical_X, historical_Y) # do the hard mental brain work of fitting the model
+        for old_date in weekday_prior.columns:  # for each historical day with the same weekday as today
+            # get the same timespan of data that is currently avail for today from historical (~X) (dim: # datapts available)
+            historical_X.append(weekday_prior[old_date].iloc[:len(to_predict[0])])
+            
+            # get the historical datapoint after that, the one we're tryna guess (~y)  (dim: 1)
+            historical_Y.append(weekday_prior[old_date].iloc[len(to_predict[0])])
+        print 'hai'
+        clf = SVR(kernel='linear', C=.0008) # set up Support Vector Regression
+        clf.fit(historical_X, historical_Y) # fit the model
         next_to_predict.append(clf.predict(to_predict)[0]) # predict the next point 
         to_predict = np.array([next_to_predict]) # add the predicted point to the current data list as if it were a true measure
+        # ALTERNATIVELY COULD MAKE DIM(Y) ~ num_predictions
     return pd.Series(to_predict[-1], index=weekday_prior.index[:len(to_predict[-1])])
 
   
-def pred(n_predictions, n_earlier_predictions, place, color, data_path, lamb):
-    '''
+def pred(n_predictions, n_earlier_predictions, place, color, lamb=.0075):
+    """
     runs all of the users choices of most recent and past predictions
     (middle layer)
-    '''
-    current, weekday_prior = load_relevant_data(place, data_path, lamb)
+    """
+    current, weekday_prior = load_relevant_data(place, lamb)
     cur_to_plot = current.copy()
     predicted = forecast_master(current, weekday_prior, n_predictions)
     pred_to_plot = predicted
@@ -56,14 +61,12 @@ def pred(n_predictions, n_earlier_predictions, place, color, data_path, lamb):
 
 
 def run_application():
-    '''
+    """
     main application that runs all user interaction/scraping/prediction functions
     (highest layer)
-    '''
-    data_path = eGUI.diropenbox(msg='Where do you want to load/save data')
-    data_path = data_path +"/"
+    """
     msg ="Forecast Dining Halls or Libraries?"
-    title = "Predict your Future"
+    title = "Settle"
     choices = ["Dining Halls", "Libraries"]
     choice = eGUI.choicebox(msg, title, choices)
     msg = "About how many minutes into the future shall I predict? (<300)"
@@ -87,10 +90,10 @@ def run_application():
         i = 0
         colors = ['red', 'orange', 'green', 'purple', 'pink']
         for lib in [ "Butler_Library_2", "Butler_Library_3", "Butler_Library_4", "Butler_Library_5", "Butler_Library_6"]:
-            pred(n_predictions, n_earlier_predictions, lib, colors[i], data_path, .0075)
+            pred(n_predictions, n_earlier_predictions, lib, colors[i])
             i += 1
     else:
-        pred(n_predictions, n_earlier_predictions, place, 'purple', data_path, .0075)
+        pred(n_predictions, n_earlier_predictions, place, 'purple')
     plt.title( 'Current and Predicted Occupancy for ' + place + ' Today')
     plt.ylabel('users connected')
     plt.xlabel('time')

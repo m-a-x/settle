@@ -7,8 +7,13 @@ from sklearn.externals import joblib
 import sys
 
 
+def dayofweek_int_to_str(dayofweek_int):
+    day_int_to_str = { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
+    return day_int_to_str[dayofweek_int]
+
+
 def hodrick_prescott_filter(date_series, lamb):
-    ''' calculates hodrick_prescott trend filter on a series '''
+    """ calculates hodrick_prescott trend filter on a series """
     filtered_series = sm.tsa.filters.hpfilter(date_series, lamb=lamb)[1]
     return filtered_series
 
@@ -66,25 +71,7 @@ def scrape_location_data(place, yr_1, m_1, d_1, h_1, min_1, yr_f, m_f, d_f, h_f,
     return location_df
 
 
-def trim_df_by_daily_count(df, place):
-    ''' trims a df of many days data by deleting days with less than threshold count '''
-    min_count_thresholds = {'jjs': 900, 'john_jay': 1800, 'Uris': 1700, 'Science_and_Engineering_Library': 1300}
-    try:
-        min_count_per_day = min_count_thresholds[place]
-    except:
-        min_count_per_day = 800
-    sum_daily_counts = df.sum().sort_values()
-    to_drop = []
-    for date in sum_daily_counts.index:
-        sum_count = sum_daily_counts.loc[date]
-        if sum_count < min_count_per_day:
-            to_drop.append(date)
-    print 'number of dropped ' + str(len(to_drop))
-    new_df = df.drop(to_drop, 1)
-    return new_df
-
-
-def scrape_all_historical(place, data_path, save_pkl=True):
+def scrape_all_historical(place, save_pkl=True):
     current_time = datetime.datetime.now()
     month, yesterday = current_time.month, current_time.day - 1
     spr_2016 = scrape_location_data(place, 2016, 1, 18, 0, 0, 2016, 5, 7, 11, 45)
@@ -108,7 +95,7 @@ def scrape_all_historical(place, data_path, save_pkl=True):
         dates_data = trim_df_by_open_hrs(place, dates_data, weekday=weekday)
         historical_weekday_dic[weekday] = dates_data
     if save_pkl:
-        joblib.dump(historical_weekday_dic, data_path + 'historical_dic_' + place + '.pkl')
+        joblib.dump(historical_weekday_dic, '../data/historical_dic_' + place + '.pkl')
     return historical_weekday_dic
 
 
@@ -121,25 +108,6 @@ def filter_weekday_df(weekday_df, lamb):
     filtered_weekday_df = pd.DataFrame(weekday_dic)
     filtered_weekday_df.dropna(axis=1, inplace=True)
     return filtered_weekday_df
-    
-    
-def load_relevant_data(place, data_path, lamb):
-    weekday = dayofweek_int_to_str(datetime.datetime.now().weekday())
-    print 'fetching current data...'
-    current_data = get_current_data(place)
-    try:
-        historical_weekday_dic = joblib.load(data_path + 'historical_dic_' + place + '.pkl')
-    except:
-        historical_weekday_dic = scrape_all_historical(place, data_path)
-    historical_prior_raw = historical_weekday_dic[weekday]
-    historical_prior_filtered = filter_weekday_df(historical_prior_raw, lamb)
-    first_measure = historical_prior_filtered.index[0]
-    current_data = hodrick_prescott_filter(current_data.loc[first_measure:], lamb)
-    return current_data, historical_prior_filtered
-
-def dayofweek_int_to_str(dayofweek_int):
-    day_int_to_str = { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun'}
-    return day_int_to_str[dayofweek_int]
 
     
 def check_if_building_open(placename, current_time, start=None, stop=None):
@@ -151,10 +119,28 @@ def check_if_building_open(placename, current_time, start=None, stop=None):
             sys.exit('Sorry but it is too late to predict for ' + placename + '.')
 
 
+def trim_df_by_daily_count(df, place):
+    """ trims a df of many days data by deleting days with less than threshold count """
+    min_count_thresholds = {'jjs': 900, 'john_jay': 1800, 'Uris': 1700, 'Science_and_Engineering_Library': 1300}
+    try:
+        min_count_per_day = min_count_thresholds[place]
+    except:
+        min_count_per_day = 800
+    sum_daily_counts = df.sum().sort_values()
+    to_drop = []
+    for date in sum_daily_counts.index:
+        sum_count = sum_daily_counts.loc[date]
+        if sum_count < min_count_per_day:
+            to_drop.append(date)
+    print 'number of dropped ' + str(len(to_drop))
+    new_df = df.drop(to_drop, 1)
+    return new_df
+
+
 def trim_df_by_open_hrs(placename, df, weekday=None):
-    '''
+    """
     trims a dataframe by whether or not the place is open on the weekday
-    '''
+    """
     current_time = datetime.datetime.now()
     if weekday is None:
         weekday = dayofweek_int_to_str(current_time.weekday())
@@ -217,3 +203,18 @@ def get_current_data(place):
     location_data.columns = [datetime.datetime.now().date()]
     trimmed_current = trim_df_by_open_hrs(place, location_data)
     return trimmed_current
+
+    
+def load_relevant_data(place, lamb):
+    weekday = dayofweek_int_to_str(datetime.datetime.now().weekday())
+    print 'fetching current data...'
+    current_data = get_current_data(place)
+    try:
+        historical_weekday_dic = joblib.load('../data/historical_dic_' + place + '.pkl')
+    except:
+        historical_weekday_dic = scrape_all_historical(place)
+    historical_prior_raw = historical_weekday_dic[weekday]
+    historical_prior_filtered = filter_weekday_df(historical_prior_raw, lamb)
+    first_measure = historical_prior_filtered.index[0]
+    current_data = hodrick_prescott_filter(current_data.loc[first_measure:], lamb)
+    return current_data, historical_prior_filtered
